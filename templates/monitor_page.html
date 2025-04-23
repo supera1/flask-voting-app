@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Pemilihan Langsung</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .totals-container h3 { margin: 0 0 0.5em 0; font-size: 1.1em; }
+        .totals-container ul { list-style: none; padding: 0; margin: 0; }
+        .totals-container li { font-size: 1em; margin-bottom: 0.3em; color: #6c757d; }
+        .totals-container li strong { color: #212529; }
+        .chart-container { position: relative; height: 60vh; width: 100%; margin-top: 2em; } /* Adjust height as needed */
+        #lastUpdated { font-size: 0.8em; color: #6c757d; margin-top: 1em; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="container container-wide">
+        <div class="header">
+             <h1>Monitor Pemilihan Langsung</h1>
+             <div class="totals-container">
+                 <h3>Total Suara per Kandidat</h3>
+                 <ul id="candidate-totals-list">
+                     {# Initial totals will be populated by JS #}
+                 </ul>
+             </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="facultyVoteChart"></canvas>
+        </div>
+         <div id="lastUpdated">Memuat data awal...</div>
+
+        <div class="mt-3">
+             <a href="{{ url_for('admin_dashboard') }}" class="button-link button-secondary">Kembali ke Dasbor Admin</a>
+             <a href="{{ url_for('admin_results') }}" class="button-link button-secondary" style="margin-left: 1em;">Lihat Tabel Hasil Akhir</a>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('facultyVoteChart').getContext('2d');
+        let facultyVoteChart;
+        const candidateColors = {};
+        const colorPalette = [
+            '#36a2eb', '#ff6384', '#4bc0c0', '#ff9f40', '#9966ff', '#ffcd56', '#c9cbcf', '#3366cc'
+        ];
+        let colorIndex = 0;
+
+        function getNextColor() {
+            const color = colorPalette[colorIndex % colorPalette.length];
+            colorIndex++;
+            return color;
+        }
+
+        function updateTotalsList(totals) {
+            const list = document.getElementById('candidate-totals-list');
+            list.innerHTML = '';
+            const sortedCandidates = Object.entries(totals).sort(([,a],[,b]) => b-a);
+            sortedCandidates.forEach(([name, votes]) => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `${name}: <strong>${votes}</strong>`;
+                list.appendChild(listItem);
+            });
+         }
+
+        function createChart(data) {
+            const labels = data.all_faculties;
+            const candidateNames = data.candidate_names;
+            candidateNames.forEach(name => {
+                if (!candidateColors[name]) {
+                    candidateColors[name] = getNextColor();
+                }
+            });
+
+            const datasets = candidateNames.map(name => {
+                return {
+                    label: name,
+                    data: labels.map(faculty => data.faculty_data[faculty]?.[name] || 0),
+                    backgroundColor: candidateColors[name],
+                    borderColor: candidateColors[name],
+                    borderWidth: 1
+                };
+            });
+
+             updateTotalsList(data.candidate_totals);
+
+            if (facultyVoteChart) {
+                facultyVoteChart.destroy();
+            }
+
+            facultyVoteChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Suara per Kandidat berdasarkan Fakultas',
+                            font: { size: 18 }
+                        },
+                         tooltip: {
+                             mode: 'index',
+                             intersect: false
+                         }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Fakultas'
+                            },
+                            stacked: false
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Jumlah Suara'
+                            },
+                            beginAtZero: true,
+                             stacked: false,
+                             ticks: {
+                                 stepSize: 1
+                             }
+                        }
+                    }
+                }
+            });
+              document.getElementById('lastUpdated').innerText = `Terakhir diperbarui: ${new Date().toLocaleTimeString('id-ID')}`;
+        }
+
+         function updateChart() {
+            fetch('{{ url_for('monitor_data') }}')
+                .then(response => {
+                     if (!response.ok) {
+                         throw new Error(`HTTP error! status: ${response.status}`);
+                     }
+                     return response.json();
+                 })
+                .then(data => {
+                    if (data && data.all_faculties && data.candidate_names && data.faculty_data && data.candidate_totals) {
+                        createChart(data);
+                    } else {
+                         console.error("Menerima struktur data tidak valid:", data);
+                         document.getElementById('lastUpdated').innerText = `Gagal mengambil data: Struktur tidak valid diterima pada ${new Date().toLocaleTimeString('id-ID')}`;
+                     }
+                })
+                 .catch(error => {
+                     console.error('Gagal mengambil data monitor:', error);
+                     document.getElementById('lastUpdated').innerText = `Gagal mengambil data pada ${new Date().toLocaleTimeString('id-ID')}`;
+                 });
+        }
+
+        updateChart();
+        setInterval(updateChart, 5000);
+
+    </script>
+
+</body>
+</html> 

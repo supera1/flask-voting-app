@@ -1,0 +1,8 @@
+Flask
+Flask-SQLAlchemy
+SQLAlchemy
+pandas
+openpyxl
+werkzeug
+Flask-Login
+bcrypt 

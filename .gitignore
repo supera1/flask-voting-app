@@ -1,0 +1,22 @@
+# Virtual Environment
+venv/
+*.pyenv
+
+# Database file
+voting.db
+instance/
+
+# Uploaded files
+uploads/
+
+# Secrets file
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# OS generated files
+.DS_Store
+Thumbs.db

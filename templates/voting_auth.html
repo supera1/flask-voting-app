@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akses Pemilihan</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container container-narrow text-center">
+        <h2>Masukkan Password Pemilihan</h2>
+        <p>Silakan masukkan password yang diberikan oleh administrator pemilihan untuk melanjutkan.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('voting_auth') }}">
+            <div class="form-group">
+                <label for="password">Password Pemilihan:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">Masuk</button>
+        </form>
+    </div>
+</body>
+</html> 

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasil Pemilihan</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Removed inline <style> block -->
+</head>
+<body>
+    <div class="container container-medium">
+        <h1 class="text-center">Hasil Pemilihan</h1>
+
+        {% if candidates %}
+            <h2>Jumlah Suara Akhir per Kandidat</h2>
+            <table class="mb-3">
+                <thead>
+                    <tr>
+                        <th>Peringkat</th>
+                        <th>Nama Kandidat</th>
+                        <th>Total Suara</th>
+                        {# Add faculty columns #}
+                        {% for faculty in all_faculties %}
+                            <th>Suara ({{ faculty }})</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for candidate in candidates %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ candidate.name }}</td>
+                            <td><strong>{{ candidate.votes }}</strong></td>
+                            {# Add faculty vote counts #}
+                            {% for faculty in all_faculties %}
+                                <td>{{ faculty_results[candidate.name].get(faculty, 0) }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                    {# Optional: Add a Total row #}
+                    <tr style="font-weight: bold; background-color: #e9ecef;">
+                         <td></td>
+                         <td>TOTAL</td>
+                         <td>{{ total_votes }}</td>
+                         {% for faculty in all_faculties %}
+                             {% set faculty_total = namespace(value=0) %}
+                             {% for candidate in candidates %}
+                                 {% set faculty_total.value = faculty_total.value + faculty_results[candidate.name].get(faculty, 0) %}
+                             {% endfor %}
+                             <td>{{ faculty_total.value }}</td>
+                         {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+            <div class="total-votes mb-3">
+                Total Suara Masuk: {{ total_votes }}
+            </div>
+
+            {# Add Export Button #}
+            <div class="text-right mb-3">
+                 <a href="{{ url_for('export_results') }}" class="button-link button-success">Ekspor Hasil ke Excel</a>
+            </div>
+
+        {% else %}
+            <p>Belum ada hasil.</p>
+        {% endif %}
+
+        <div class="mt-3">
+            <a href="{{ url_for('admin_dashboard') }}" class="button-link button-secondary">Kembali ke Dasbor Admin</a>
+            <a href="{{ url_for('monitor_page') }}" class="button-link button-secondary" style="margin-left: 1em;">Lihat Monitor Real-time</a>
+        </div>
+
+    </div>
+</body>
+</html> 

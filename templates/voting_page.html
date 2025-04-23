@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Berikan Suara Anda</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f0f2f5; }
+        .header { background-color: #1877f2; color: white; padding: 1em 2em; margin-bottom: 2em; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { margin: 0; font-size: 1.5em; }
+        .voter-info { text-align: right; font-size: 0.9em; }
+        .container { max-width: 1000px; margin: auto; padding: 0 2em; }
+        .candidate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2em; }
+        .candidate-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1.5em;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .candidate-card:hover {
+             transform: translateY(-5px);
+        }
+        .candidate-card img {
+            max-width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-bottom: 1em;
+            border: 3px solid #eee;
+        }
+        .candidate-card h3 { margin: 0.5em 0; color: #1c1e21; }
+        .vm-link { display: block; margin-top: 0.5em; font-size: 0.9em; color: #007bff; }
+        .vote-button {
+            display: block;
+            width: 80%;
+            margin: 1.5em auto 0 auto;
+            padding: 0.8em 1em;
+            background-color: #42b72a; /* Green */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .vote-button:hover { background-color: #36a420; }
+        .alert { padding: 1em; margin: 1em 2em; border-radius: 3px; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Pemilihan Ketua BEM</h1>
+        <div class="voter-info">
+            Selamat datang, {{ voter_name }}!<br>
+            NIM: {{ voter_student_id }} | Fakultas: {{ voter_faculty }}
+        </div>
+    </div>
+
+    <div style="padding: 0 2em;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="container">
+        <h2 class="text-center mb-3">Pilih Kandidat Anda</h2>
+        <p class="text-center mb-3">Tinjau kandidat di bawah ini dan klik tombol "Pilih" untuk pemimpin pilihan Anda.</p>
+
+        <form method="POST" action="{{ url_for('voting_page') }}">
+            <div class="candidate-grid">
+                {% for candidate in candidates %}
+                    <div class="candidate-card">
+                        {% if candidate.photo_path %}
+                            <img src="{{ url_for('uploaded_file', filename=candidate.photo_path) }}" alt="Foto {{ candidate.name }}">
+                        {% else %}
+                            <div style="height:150px; width:150px; background:#eee; border-radius:50%; margin: 0 auto 1em auto; display:flex; align-items:center; justify-content:center; color:#aaa;">Tidak Ada Foto</div>
+                        {% endif %}
+                        <h3>{{ candidate.name }}</h3>
+
+                        {% if candidate.vision_mission_path %}
+                            <a href="{{ url_for('uploaded_file', filename=candidate.vision_mission_path) }}" target="_blank" class="vm-link">Lihat Visi & Misi (PDF)</a>
+                        {% elif candidate.vision_mission_text %}
+                            <p><small><strong>Visi/Misi:</strong> {{ candidate.vision_mission_text[:100] }}{% if candidate.vision_mission_text|length > 100 %}...{% endif %}</small></p>
+                        {% else %}
+                             <p><small>Visi/misi tidak disediakan.</small></p>
+                        {% endif %}
+
+                        <button type="submit" name="candidate_id" value="{{ candidate.id }}" class="vote-button button-success">Pilih {{ candidate.name }}</button>
+                    </div>
+                {% endfor %}
+            </div>
+            {% if not candidates %}
+                <p class="text-center mt-3">Belum ada kandidat ditambahkan.</p>
+            {% endif %}
+        </form>
+    </div>
+
+</body>
+</html> 

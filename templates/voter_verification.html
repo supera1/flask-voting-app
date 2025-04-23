@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi Pemilih</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Removed inline <style> block -->
+</head>
+<body>
+    <div class="container container-narrow text-center">
+        <h2>Verifikasi Pemilih</h2>
+        <p>Silakan masukkan NIM Anda untuk memverifikasi kelayakan memilih.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('voter_verification') }}">
+            <div class="form-group">
+                <label for="search_term">NIM :</label>
+                <input type="text" id="search_term" name="search_term" required>
+            </div>
+            <button type="submit">Cari Saya</button>
+        </form>
+
+        <p class="mt-3"><small>Jika Anda kesulitan menemukan NIM Anda, silakan hubungi administrator pemilihan.</small></p>
+    </div>
+</body>
+</html> 

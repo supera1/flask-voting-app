@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dasbor Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .candidate-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8em 0;
+            border-bottom: 1px solid #eee;
+        }
+        .candidate-list-item:last-child { border-bottom: none; }
+        .candidate-info img {
+             height: 40px;
+             width: 40px;
+             border-radius: 50%;
+             margin-right: 10px;
+             object-fit: cover;
+             vertical-align: middle;
+         }
+        .delete-form { display: inline; margin-left: 1em; }
+        .status-badge { padding: 0.3em 0.6em; border-radius: 4px; font-size: 0.9em; font-weight: bold; }
+        .status-active { background-color: #28a745; color: white; }
+        .status-finished { background-color: #6c757d; color: white; }
+        .status-scheduled { background-color: #ffc107; color: #212529; }
+        .status-notpublished { background-color: #dc3545; color: white; }
+        .status-configuring { background-color: #17a2b8; color: white; }
+        .status-notconfigured { background-color: #ffc107; color: #212529; }
+        .settings-summary p { margin: 0.5em 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>Dasbor Admin</h1>
+            <div>
+                 <span>Selamat datang, {{ current_user.username }}!</span>
+                 <a href="{{ url_for('admin_logout') }}" class="button-link button-danger" style="margin-left: 1em;">Logout</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+         <!-- Section: Status & Summary -->
+        <div class="admin-section">
+            <h3>Status & Ringkasan Saat Ini</h3>
+            <div class="settings-summary">
+                <p><strong>Status Pemilihan:</strong>
+                    <span class="status-badge
+                        {% if voting_status == 'Active' %}status-active" title="Pemilihan sedang berlangsung.
+                        {% elif voting_status == 'Finished' %}status-finished" title="Pemilihan telah selesai.
+                        {% elif voting_status == 'Published (Scheduled)' %}status-scheduled" title="Pemilihan dijadwalkan untuk dimulai.
+                        {% elif voting_status == 'Ready to Publish' %}status-configuring" title="Konfigurasi lengkap, siap untuk dipublikasikan.
+                        {% elif voting_status == 'Configuring (Not Published)' %}status-notpublished" title="Konfigurasi belum lengkap atau belum dipublikasikan.
+                        {% elif voting_status == 'Not Configured' %} status-notconfigured" title="Pengaturan pemilihan belum dibuat.
+                        {% else %}status-notpublished{% endif %}">
+                        {# Translate status strings #}
+                        {% if voting_status == 'Active' %}Aktif
+                        {% elif voting_status == 'Finished' %}Selesai
+                        {% elif voting_status == 'Published (Scheduled)' %}Dipublikasikan (Terjadwal)
+                        {% elif voting_status == 'Ready to Publish' %}Siap Publikasi
+                        {% elif voting_status == 'Configuring (Not Published)' %}Konfigurasi (Belum Publikasi)
+                        {% elif voting_status == 'Not Configured' %}Belum Dikonfigurasi
+                        {% else %}{{ voting_status }}{% endif %}
+                    </span>
+                </p>
+                <p><strong>Waktu Mulai:</strong> {{ settings.start_time.strftime('%Y-%m-%d %H:%M') if settings and settings.start_time else 'Belum Diatur' }}</p>
+                <p><strong>Waktu Selesai:</strong> {{ settings.end_time.strftime('%Y-%m-%d %H:%M') if settings and settings.end_time else 'Belum Diatur' }}</p>
+                <p><strong>Password Pemilihan:</strong> {{ 'Sudah Diatur' if settings and settings.voting_password_hash else 'Belum Diatur' }}</p>
+                <p><strong>Pemilih Terdaftar:</strong> {{ voter_count }}</p>
+                <p><strong>Jumlah Kandidat:</strong> {{ candidates|length }}</p>
+            </div>
+        </div>
+
+        <!-- Section: Manage Candidates -->
+        <div class="admin-section">
+            <h3>Kelola Kandidat</h3>
+            {% if candidates %}
+                <ul style="list-style: none; padding: 0;">
+                    {% for candidate in candidates %}
+                        <li class="candidate-list-item">
+                            <span class="candidate-info">
+                                {% if candidate.photo_path %}
+                                    <img src="{{ url_for('uploaded_file', filename=candidate.photo_path) }}" alt="Foto">
+                                {% else %}
+                                    <span style="display:inline-block; height:40px; width:40px; background:#eee; border-radius:50%; text-align:center; line-height:40px; font-size:0.8em; color:#aaa; margin-right:10px; vertical-align:middle;">?</span>
+                                {% endif %}
+                                {{ candidate.name }}
+                            </span>
+                            <span>
+                                <form class="delete-form" method="POST" action="{{ url_for('delete_candidate', candidate_id=candidate.id) }}" onsubmit="return confirm('Apakah Anda yakin ingin menghapus kandidat {{ candidate.name }}?');">
+                                    <button type="submit" class="button-link button-danger" style="padding: 0.4em 0.8em; font-size: 0.8em;">Hapus</button>
+                                </form>
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Belum ada kandidat ditambahkan.</p>
+            {% endif %}
+            <hr style="margin: 1.5em 0;">
+            <h4>Tambah Kandidat Baru</h4>
+            <form method="POST" action="{{ url_for('add_candidate') }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="candidate_name">Nama Kandidat:</label>
+                    <input type="text" id="candidate_name" name="candidate_name" required>
+                </div>
+                 <div class="form-group">
+                    <label for="candidate_photo">Foto Kandidat (jpg, png):</label>
+                    <input type="file" id="candidate_photo" name="candidate_photo" accept="image/jpeg, image/png">
+                </div>
+                <div class="form-group">
+                    <label for="vision_mission_pdf">Visi & Misi (PDF):</label>
+                    <input type="file" id="vision_mission_pdf" name="vision_mission_pdf" accept=".pdf">
+                </div>
+                <div class="form-group">
+                    <label for="vision_mission_text">Atau Masukkan Teks Visi & Misi:</label>
+                    <textarea id="vision_mission_text" name="vision_mission_text"></textarea>
+                    <small>(Jika PDF diunggah, teks ini akan diabaikan)</small>
+                </div>
+                <button type="submit">Tambah Kandidat</button>
+            </form>
+        </div>
+
+         <!-- Section: Upload Voters -->
+        <div class="admin-section">
+            <h3>Unggah Pemilih Terdaftar</h3>
+            <p>Unggah file Excel (.xlsx) dengan detail mahasiswa. Kolom yang diperlukan: 'name', 'id', 'faculty'. Mengunggah akan menggantikan daftar pemilih yang ada.</p>
+            <p><strong>Jumlah Pemilih Saat Ini:</strong> {{ voter_count }}</p>
+            <form method="POST" action="{{ url_for('upload_voters') }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="voter_file">File Excel Pemilih (.xlsx):</label>
+                    <input type="file" id="voter_file" name="voter_file" accept=".xlsx" required>
+                </div>
+                <button type="submit">Unggah Pemilih</button>
+            </form>
+        </div>
+
+         <!-- Section: Voting Settings -->
+        <div class="admin-section">
+            <h3>Pengaturan Pemilihan</h3>
+             <div class="settings-summary mb-3">
+                 <p><strong>Waktu Mulai Saat Ini:</strong> {{ settings.start_time.strftime('%Y-%m-%d %H:%M') if settings and settings.start_time else 'Belum Diatur' }}</p>
+                 <p><strong>Waktu Selesai Saat Ini:</strong> {{ settings.end_time.strftime('%Y-%m-%d %H:%M') if settings and settings.end_time else 'Belum Diatur' }}</p>
+                 <p><strong>Status Password Pemilihan:</strong> {{ 'Sudah Diatur' if settings and settings.voting_password_hash else 'Belum Diatur' }}</p>
+            </div>
+            <form method="POST" action="{{ url_for('update_settings') }}">
+                <div class="form-group">
+                    <label for="start_time">Atur/Perbarui Waktu Mulai Pemilihan:</label>
+                    <input type="datetime-local" id="start_time" name="start_time" value="{{ settings.start_time.strftime('%Y-%m-%dT%H:%M') if settings and settings.start_time else '' }}">
+                     <small>(Kosongkan untuk menghapus)</small>
+                </div>
+                 <div class="form-group">
+                    <label for="end_time">Atur/Perbarui Waktu Selesai Pemilihan:</label>
+                    <input type="datetime-local" id="end_time" name="end_time" value="{{ settings.end_time.strftime('%Y-%m-%dT%H:%M') if settings and settings.end_time else '' }}">
+                    <small>(Kosongkan untuk menghapus)</small>
+                </div>
+                <div class="form-group">
+                    <label for="voting_password">Atur/Perbarui Password Pemilihan:</label>
+                    <input type="password" id="voting_password" name="voting_password">
+                    <small>(Diperlukan untuk mempublikasikan. Kosongkan untuk mempertahankan password yang ada.)</small>
+                </div>
+                <button type="submit">Perbarui Pengaturan</button>
+            </form>
+
+            <div class="mt-3 pt-3 border-top">
+                 {% set vote_active = false %}
+                 {% if settings and settings.start_time and settings.end_time and current_time %}
+                     {% if settings.start_time <= current_time <= settings.end_time %}
+                         {% set vote_active = true %}
+                     {% endif %}
+                 {% elif settings and settings.start_time and not settings.end_time and current_time %} {# Case: Start time set, no end time #}
+                      {% if settings.start_time <= current_time %}
+                          {% set vote_active = true %}
+                      {% endif %}
+                 {% endif %}
+
+                <a href="{{ url_for('voter_verification') }}"
+                   target="_blank"
+                   class="button-link button-success {{ 'disabled' if not vote_active }}"
+                   {% if not vote_active %} style="pointer-events: none; background-color: #a0d0a0;" title="Pemilihan sedang tidak aktif berdasarkan waktu yang ditetapkan." {% endif %}
+                   >Halaman Voting (Buka)</a>
+                 <small class="d-block mt-1">Tombol hanya aktif jika waktu saat ini berada di antara waktu mulai dan selesai yang ditetapkan.</small>
+            </div>
+
+        </div>
+
+        <!-- Section: New Vote Initialization -->
+        <div class="admin-section">
+            <h3>Inisialisasi Pemilihan Baru</h3>
+            <p>Ini akan menghapus semua kandidat, pemilih, hasil, dan pengaturan yang ada. Gunakan dengan hati-hati.</p>
+            <form method="POST" action="{{ url_for('new_vote') }}" onsubmit="return confirm('Apakah Anda yakin ingin memulai pemilihan baru? Ini akan menghapus semua kandidat, pemilih, hasil, dan pengaturan saat ini.');">
+                <button type="submit" class="button-danger">Mulai Pemilihan Baru</button>
+            </form>
+        </div>
+
+        <!-- Section: Results -->
+        <div class="admin-section">
+            <h3>Hasil Pemilihan</h3>
+            <a href="{{ url_for('admin_results') }}" class="button-link button-secondary">Lihat Tabel Hasil Detail</a>
+            <a href="{{ url_for('monitor_page') }}" class="button-link button-secondary" style="margin-left: 1em;">Lihat Monitor Real-time</a>
+        </div>
+
+    </div>
+</body>
+</html> 
