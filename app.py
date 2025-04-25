@@ -390,49 +390,36 @@ def update_settings():
 @app.route('/admin/publish_vote', methods=['POST'])
 @login_required
 def publish_vote():
-    # --- Simplified Logic --- 
-    # Remove all checks and database operations.
-    # This button now acts only as a shortcut to the voter verification page.
-    # Actual voting availability still depends on settings configured via the dashboard
-    # (start/end time, password, and the unpublished 'published' flag in the DB if needed by other logic).
+    # --- Restore Publish Logic --- 
+    # This route now handles the actual act of publishing.
+    
+    settings = VotingSettings.query.first()
+    # Check 1: Settings configured?
+    if not settings or not settings.start_time or not settings.end_time or not settings.voting_password_hash:
+        flash('Tidak dapat mempublikasikan. Harap atur waktu mulai, waktu selesai, dan password pemilihan terlebih dahulu.', 'warning')
+        return redirect(url_for('admin_dashboard'))
 
-    # print("DEBUG: Publish button clicked, redirecting to voter_verification.") # Optional: Keep if needed
-    flash('Mengarahkan ke halaman Verifikasi Pemilih...', 'info')
-    return redirect(url_for('voter_verification'))
+    # Check 2: Candidates exist?
+    if not Candidate.query.first():
+         flash('Tidak dapat mempublikasikan. Harap tambahkan setidaknya satu kandidat.', 'warning')
+         return redirect(url_for('admin_dashboard'))
 
-    # --- Original Logic (Commented Out) ---
-    # print("--- DEBUG: Entered /admin/publish_vote route ---") # LOGGING
-    # settings = VotingSettings.query.first()
-    # # Check 1: Settings
-    # if not settings or not settings.start_time or not settings.end_time or not settings.voting_password_hash:
-    #     print("--- DEBUG: Publish check FAILED: Settings incomplete ---") # LOGGING
-    #     flash('Cannot publish. Please set start time, end time, and voting password first.', 'warning')
-    #     return redirect(url_for('admin_dashboard'))
-    # print("--- DEBUG: Publish check PASSED: Settings complete ---") # LOGGING
-    # # Check 2: Candidates
-    # if not Candidate.query.first():
-    #      print("--- DEBUG: Publish check FAILED: No candidates ---") # LOGGING
-    #      flash('Cannot publish. Please add at least one candidate.', 'warning')
-    #      return redirect(url_for('admin_dashboard'))
-    # print("--- DEBUG: Publish check PASSED: Candidates exist ---") # LOGGING
-    # # Check 3: Voters
-    # if not Voter.query.first():
-    #       print("--- DEBUG: Publish check FAILED: No voters ---") # LOGGING
-    #       flash('Cannot publish. Please upload the voter list.', 'warning')
-    #       return redirect(url_for('admin_dashboard'))
-    # print("--- DEBUG: Publish check PASSED: Voters exist ---") # LOGGING
-    # print("--- DEBUG: All publish checks passed. Attempting to set published=True and redirect. ---") # LOGGING
-    # try:
-    #     settings.published = True
-    #     db.session.commit()
-    #     print("--- DEBUG: Publish SUCCESSFUL. Redirecting to voting_auth. ---") # LOGGING
-    #     flash('Voting page is now published and live! Voters can now access the voting page.', 'success')
-    #     return redirect(url_for('voting_auth')) # Original redirect was here
-    # except Exception as e:
-    #     db.session.rollback()
-    #     print(f"--- DEBUG: Publish EXCEPTION: {e} ---") # LOGGING
-    #     flash(f'Error publishing vote: {str(e)}', 'danger')
-    #     return redirect(url_for('admin_dashboard'))
+    # Check 3: Voters exist?
+    if not Voter.query.first():
+          flash('Tidak dapat mempublikasikan. Harap unggah daftar pemilih.', 'warning')
+          return redirect(url_for('admin_dashboard'))
+
+    # Attempt to publish
+    try:
+        settings.published = True
+        db.session.commit()
+        flash('Pemilihan berhasil dipublikasikan! Status sekarang aktif atau terjadwal.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Gagal mempublikasikan pemilihan: {str(e)}', 'danger')
+    
+    # Always redirect back to dashboard after attempting to publish
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/results')
 @login_required

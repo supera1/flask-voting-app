@@ -77,6 +77,13 @@
                 <p><strong>Waktu Mulai:</strong> {{ settings.start_time.strftime('%Y-%m-%d %H:%M') if settings and settings.start_time else 'Belum Diatur' }}</p>
                 <p><strong>Waktu Selesai:</strong> {{ settings.end_time.strftime('%Y-%m-%d %H:%M') if settings and settings.end_time else 'Belum Diatur' }}</p>
                 <p><strong>Password Pemilihan:</strong> {{ 'Sudah Diatur' if settings and settings.voting_password_hash else 'Belum Diatur' }}</p>
+                <p><strong>Status Publikasi:</strong> 
+                    {% if settings and settings.published %}
+                        <span class="badge bg-success">Sudah Dipublikasikan</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Belum Dipublikasikan</span>
+                    {% endif %}
+                </p>
                 <p><strong>Pemilih Terdaftar:</strong> {{ voter_count }}</p>
                 <p><strong>Jumlah Kandidat:</strong> {{ candidates|length }}</p>
             </div>
@@ -192,6 +199,14 @@
                    >Halaman Voting (Buka)</a>
                  <small class="d-block mt-1">Tombol hanya aktif jika waktu saat ini berada di antara waktu mulai dan selesai yang ditetapkan.</small>
             </div>
+
+            {# Add Publish Button Form #}
+            {% if settings and not settings.published %}
+                <form action="{{ url_for('publish_vote') }}" method="POST" class="mt-2 mb-3">
+                    <button type="submit" class="btn btn-warning">Publikasikan Pemilihan</button>
+                    <small class="d-block text-muted">Pastikan waktu, password, kandidat, dan pemilih sudah benar sebelum mempublikasikan.</small>
+                </form>
+            {% endif %}
 
         </div>
 
