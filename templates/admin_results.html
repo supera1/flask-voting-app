@@ -56,9 +56,10 @@
                 Total Suara Masuk: {{ total_votes }}
             </div>
 
-            {# Add Export Button #}
+            {# Add Export Buttons #}
             <div class="text-right mb-3">
                  <a href="{{ url_for('export_results') }}" class="button-link button-success">Ekspor Hasil ke Excel</a>
+                 <a href="{{ url_for('export_voter_details') }}" class="button-link button-success" style="margin-left: 1em;">Ekspor Detail Hasil ke Excel</a>
             </div>
 
         {% else %}
@@ -72,4 +73,4 @@
 
     </div>
 </body>
-</html> 
+</html>

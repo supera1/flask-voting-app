@@ -500,7 +500,76 @@ def export_results():
         app.logger.error(f"Excel Export Error: {str(e)}", exc_info=True)
         return redirect(url_for('admin_results'))
 
-
+@app.route('/admin/export_voter_details')
+@login_required
+def export_voter_details():
+    try:
+        # Get all voters who have voted
+        voters = Voter.query.filter_by(has_voted=True).all()
+        # Get all candidates
+        candidates = Candidate.query.all()
+        # Get faculty votes for each candidate
+        faculty_votes = {}
+        
+        for candidate in candidates:
+            faculty_votes[candidate.id] = {}
+            fvs = FacultyVote.query.filter_by(candidate_id=candidate.id).all()
+            for fv in fvs:
+                faculty_votes[candidate.id][fv.faculty_name] = fv.vote_count
+        
+        # Create a more accurate reconstruction of voter->candidate mapping
+        # Group voters by faculty
+        faculty_voters = {}
+        for voter in voters:
+            if voter.faculty not in faculty_voters:
+                faculty_voters[voter.faculty] = []
+            faculty_voters[voter.faculty].append(voter)
+        
+        # For each faculty, distribute voters to candidates according to vote counts
+        data_for_excel = []
+        
+        for faculty, voters_list in faculty_voters.items():
+            faculty_voter_index = 0
+            # For each candidate, assign the right number of voters from this faculty
+            for candidate in candidates:
+                # Get vote count for this candidate from this faculty
+                vote_count = faculty_votes.get(candidate.id, {}).get(faculty, 0)
+                
+                # Assign voters to this candidate
+                for i in range(vote_count):
+                    if faculty_voter_index < len(voters_list):
+                        voter = voters_list[faculty_voter_index]
+                        data_for_excel.append({
+                            'Name': voter.name,
+                            'ID': voter.student_id,
+                            'Faculty': voter.faculty,
+                            'Candidate Chosen': candidate.name
+                        })
+                        faculty_voter_index += 1
+        
+        # Create Excel file in memory
+        output = io.BytesIO()
+        df = pd.DataFrame(data_for_excel)
+        
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Detailed Voting Results')
+        
+        output.seek(0)
+        
+        # Return as file download
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='voting_detail_results.xlsx'
+        )
+    
+    except Exception as e:
+        flash(f'Gagal membuat ekspor Excel detail: {str(e)}', 'danger')
+        # Log the detailed error for debugging
+        app.logger.error(f"Excel Detail Export Error: {str(e)}", exc_info=True)
+        return redirect(url_for('admin_results'))
+    
 # --- Voting Page Routes ---
 
 @app.route('/vote', methods=['GET', 'POST'])
